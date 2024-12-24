@@ -22,6 +22,16 @@ ball.velocity = {}
 ball.velocity.x = 160
 ball.velocity.y = -160
 
+brick = {}
+brick.x = 600
+brick.y = 200
+brick.w = 180
+brick.h = 20
+brick.isDead = false
+
+
+
+
 function love.draw()
     love.graphics.setColor(0.161, 0.161, 0.161)
 
@@ -35,6 +45,10 @@ function love.draw()
 
     love.graphics.setColor(1,0,0)
     love.graphics.rectangle('fill', ball.x, ball.y, ball.w, ball.h)
+
+
+    love.graphics.setColor(0,0,1)
+    love.graphics.rectangle('fill',brick.x, brick.y, brick.w, brick.h)
 end
 
 function Collide(body, ball)
@@ -51,6 +65,17 @@ end
 if ball.y < 0 then
     ball.velocity.y = -ball.velocity.y
     end
+
+end
+
+function CollideBrick(ball, brick)
+if ball.y < brick.y + brick.h and ball.x +ball.w> brick.x and ball.x < brick.x + brick.w and ball.y + ball.h > brick.y  then
+ball.velocity.y = -ball.velocity.y
+end
+
+
+
+
 
 end
 
@@ -75,6 +100,7 @@ function love.update(dt)
    end
 
    CollideBoundary(ball)
+   CollideBrick(ball, brick)
 
     
 end
