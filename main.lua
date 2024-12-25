@@ -9,10 +9,19 @@ bricks = {
     love.graphics.newImage('/images/Brick3.png')
 }
 
+sounds = {
+    ["birckHit"] = love.audio.newSource('/sounds/brick_hit.wav', "static"),
+    ["confirm"] = love.audio.newSource('/sounds/confirm.wav', "static"),
+    ["hurt"] = love.audio.newSource('/sounds/hurt.wav', "static"),
+    ["paddleHit"] = love.audio.newSource('/sounds/paddle_hit.wav', "static"),
+    ["wallHit"] = love.audio.newSource('/sounds/wall_hit.wav', "static"),
+}
+
 function love.load()
     love.window.setMode(WIDTH, HEIGHT)
     state = "menu"
     background = love.graphics.newImage('/images/background1.png')
+
     
 end
 
@@ -27,11 +36,13 @@ paddle.speed = 400
 ball = {}
 ball.y = 100
 ball.x = 100
-ball.w = 15
-ball.h = 15
 ball.velocity = {}
 ball.velocity.x = 160
 ball.velocity.y = -160
+ball.img = love.graphics.newImage("/images/ball.png")
+
+ball.w = ball.img:getWidth()
+ball.h = ball.img:getHeight()
 
 
 AllBricks = {}
@@ -54,7 +65,7 @@ function levelMaker()
     local padding = 100
     local spacing = 20
     local cols = math.floor((WIDTH - padding * 2) / (64 + spacing))
-    local rows = 3
+    local rows = 4
     local startX = padding
     local startY = padding
 
@@ -78,18 +89,23 @@ function love.draw()
     if state == "menu" then
         love.graphics.setColor(0,0,0)
 
-        love.graphics.print("Press W to start playing",WIDTH/2 - 200, HEIGHT/2,0,3)
+        love.graphics.setFont(love.graphics.newFont('/fonts/font.ttf',100))
+        love.graphics.print("Brick Breaker",WIDTH/2 - 340, HEIGHT/2 - 40,0)
+
+        love.graphics.setFont(love.graphics.newFont('/fonts/font.ttf',32))
+        love.graphics.print("Press W to start playing",400,500,0)
         love.graphics.reset()
     end
     if state == "play" or state == "serve" then
         love.graphics.draw(paddle.img, paddle.x, paddle.y)
         love.graphics.setColor(0,0,0)
-        love.graphics.print("Lives:"..tostring(LIVES),WIDTH-200,30,0,2,2)
-        love.graphics.print("Score:"..tostring(SCORE),100,30,0,2,2)
+        love.graphics.setFont(love.graphics.newFont('/fonts/font.ttf',25))
+        love.graphics.print("Lives:"..tostring(LIVES),WIDTH-200,30,0)
+        love.graphics.print("Score:"..tostring(SCORE),100,30,0)
 love.graphics.reset()
 
 love.graphics.setColor(1,0,0)
-        love.graphics.rectangle('fill', ball.x, ball.y, ball.w, ball.h)
+        love.graphics.draw(ball.img, ball.x, ball.y)
         love.graphics.reset()
 
 
@@ -99,12 +115,25 @@ love.graphics.setColor(1,0,0)
     end
       if state == "over" then
         love.graphics.setColor(0,0,0)
-        love.graphics.print("Game Over",WIDTH/2 - 200, HEIGHT/2,0,3)
-        love.graphics.print("Score:"..tostring(SCORE),WIDTH/2 - 200, 40+HEIGHT/2,0,3)
-        love.graphics.print("Press R to restart",WIDTH/2 - 200, 80+HEIGHT/2,0,3)
+        love.graphics.setFont(love.graphics.newFont('/fonts/font.ttf',100))
+        love.graphics.print("GameOver",400,340,0)
+        love.graphics.setFont(love.graphics.newFont('/fonts/font.ttf',30))
+        love.graphics.print("Score:"..tostring(SCORE),600, 80+HEIGHT/2,0)
+        love.graphics.print("Press R to restart",500, 120+HEIGHT/2,0)
         love.graphics.reset()
 
         
+    end
+
+    if state == "won" then 
+        love.graphics.setColor(0,0,0)
+        love.graphics.setFont(love.graphics.newFont('/fonts/font.ttf',100))
+        love.graphics.print("You Won!",400,340,0)
+        love.graphics.setFont(love.graphics.newFont('/fonts/font.ttf',30))
+        love.graphics.print("Score:"..tostring(SCORE),600, 80+HEIGHT/2,0)
+        love.graphics.print("Press R to restart",500, 120+HEIGHT/2,0)
+        love.graphics.reset()
+
     end
   
 end
@@ -121,22 +150,31 @@ function Collide(body, target)
 end
 
 function CollideBoundary(ball)
+   
     if ball.x < 0 or ball.x + ball.w > WIDTH then
         ball.velocity.x = -ball.velocity.x
+        love.audio.stop()
+        love.audio.play(sounds["wallHit"])
     end
 
     if ball.x < 0 then
         ball.x = 0
+        love.audio.stop()
+        love.audio.play(sounds["wallHit"])
     end
 
 
     if ball.x > WIDTH then
         ball.x = WIDTH - ball.w
+        love.audio.stop()
+        love.audio.play(sounds["wallHit"])
     end
 
     if ball.y < 0 then
         ball.velocity.y = -ball.velocity.y
         ball.y = 0
+        love.audio.stop()
+        love.audio.play(sounds["wallHit"])
     end
 end
 
@@ -149,15 +187,24 @@ end
 function love.keypressed(key)
     if key == "space" and state == "serve" then
         state = "play"
+        love.audio.play(sounds["paddleHit"])
+
     end
 
     if key == "w" and state == "menu" then
         state = "serve"
+        love.audio.play(sounds["confirm"])
+
     end
-    if key == "r" and state == "over" then 
+    if key == "r" and state == "over" or state == "won" then 
         state = "serve"
         LIVES = 3
         SCORE = 0
+
+        levelMaker()
+
+        love.audio.play(sounds["confirm"])
+
     end
 end
 
@@ -168,6 +215,9 @@ function love.update(dt)
     if(LIVES == 0) then
         state = "over"
     end
+    if #AllBricks == 0 then 
+        state = "won"
+    end
     if (state == "play") then
         ball.x = ball.x + ball.velocity.x * dt
         ball.y = ball.y + ball.velocity.y * dt
@@ -175,6 +225,9 @@ function love.update(dt)
         if(ball.y > HEIGHT) then
             state ="serve"
             LIVES = LIVES -1
+            love.audio.stop()
+            love.audio.play(sounds["hurt"])
+
         end
 
         if Collide(paddle, ball) then
@@ -188,6 +241,9 @@ function love.update(dt)
             if Collide(brick, ball) then
                 brick.lvl = brick.lvl - 1
                 SCORE  = SCORE + 1
+                love.audio.stop()
+                love.audio.play(sounds["birckHit"])
+
                 if (brick.lvl > 0) then
                     brick.img = bricks[math.abs(brick.lvl)]
                 end
